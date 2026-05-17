@@ -35,12 +35,13 @@ def count_params(model):
 
 
 def make_loader(dataset, cfg, shuffle: bool, drop_last: bool):
+    pin_memory = bool(cfg["train"].get("pin_memory", torch.cuda.is_available()))
     return DataLoader(
         dataset,
         batch_size=cfg["train"]["batch_size"],
         shuffle=shuffle,
         num_workers=cfg["train"]["num_workers"],
-        pin_memory=torch.cuda.is_available(),
+        pin_memory=pin_memory,
         drop_last=drop_last,
     )
 
@@ -56,7 +57,8 @@ def run_epoch(model, loader, teacher_cache, optimizer, scaler, cfg, device, trai
 
     desc = "train" if train else "val"
     autocast_enabled = bool(cfg["train"].get("amp", True)) and device.type == "cuda"
-    for step, batch in enumerate(tqdm(loader, desc=desc, leave=False), start=1):
+    disable_tqdm = bool(cfg["train"].get("disable_tqdm", False))
+    for step, batch in enumerate(tqdm(loader, desc=desc, leave=False, disable=disable_tqdm), start=1):
         images = batch["image"].to(device, non_blocking=True)
         text_tokens = batch["text_tokens"].to(device, non_blocking=True)
         index = batch["index"].long()
@@ -115,16 +117,35 @@ def save_checkpoint(path, model, optimizer, epoch, cfg, metric):
     )
 
 
+def load_checkpoint(path, model, optimizer, device):
+    checkpoint = torch.load(path, map_location=device)
+    model.load_state_dict(checkpoint["model"])
+    if "optimizer" in checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer"])
+    return checkpoint
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/distill_resnet18.yaml")
+    parser.add_argument("--resume", type=str, default=None)
+    parser.add_argument("--device", type=str, choices=["auto", "cuda", "cpu"], default="auto")
+    parser.add_argument("--epochs", type=int, default=None)
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as file:
         cfg = yaml.safe_load(file)
 
     set_seed(cfg["seed"])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if "cudnn_enabled" in cfg.get("train", {}):
+        torch.backends.cudnn.enabled = bool(cfg["train"]["cudnn_enabled"])
+
+    if args.device == "auto":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        if args.device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA was requested but is not available.")
+        device = torch.device(args.device)
     tokenizer = open_clip.get_tokenizer(cfg["teacher"]["model_name"])
 
     dataset = ImageTextDataset(
@@ -183,10 +204,25 @@ def main():
     log_path = log_dir / "train_log.csv"
 
     best_val = float("inf")
-    print(f"Device: {device}")
-    print(f"Student params: {count_params(student) / 1e6:.2f} M")
+    start_epoch = 1
+    if args.resume:
+        checkpoint = load_checkpoint(args.resume, student, optimizer, device)
+        start_epoch = int(checkpoint.get("epoch", 0)) + 1
+        best_ckpt = ckpt_dir / "student_best.pt"
+        if best_ckpt.exists():
+            best_checkpoint = torch.load(best_ckpt, map_location="cpu")
+            best_val = float(best_checkpoint.get("metric", checkpoint.get("metric", best_val)))
+        else:
+            best_val = float(checkpoint.get("metric", best_val))
 
-    with open(log_path, "w", newline="", encoding="utf-8") as file:
+    print(f"Device: {device}")
+    print(f"cuDNN enabled: {torch.backends.cudnn.enabled}")
+    print(f"Student params: {count_params(student) / 1e6:.2f} M")
+    if args.resume:
+        print(f"Resumed from {args.resume} at epoch {start_epoch}")
+
+    append_log = bool(args.resume) and log_path.exists()
+    with open(log_path, "a" if append_log else "w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(
             file,
             fieldnames=[
@@ -199,9 +235,11 @@ def main():
                 "clip",
             ],
         )
-        writer.writeheader()
+        if not append_log:
+            writer.writeheader()
 
-        for epoch in range(1, int(cfg["train"]["epochs"]) + 1):
+        total_epochs = int(args.epochs or cfg["train"]["epochs"])
+        for epoch in range(start_epoch, total_epochs + 1):
             train_metrics = run_epoch(student, train_loader, teacher_cache, optimizer, scaler, cfg, device, train=True)
             writer.writerow({"epoch": epoch, "split": "train", **train_metrics})
 
@@ -223,6 +261,7 @@ def main():
             if monitor < best_val:
                 best_val = monitor
                 save_checkpoint(ckpt_dir / "student_best.pt", student, optimizer, epoch, cfg, monitor)
+            file.flush()
 
     print(f"Saved checkpoints to {ckpt_dir}")
     print(f"Saved log to {log_path}")

@@ -22,13 +22,16 @@ student:
 
 train:
   epochs: 30
-  batch_size: 64
-  num_workers: 4
+  batch_size: 48
+  num_workers: 0
   lr: 1.0e-4
   weight_decay: 0.05
   warmup_epochs: 2
   grad_accum_steps: 1
-  amp: true
+  amp: false
+  pin_memory: false
+  cudnn_enabled: true
+  disable_tqdm: true
   val_ratio: 0.1
   drop_last: true
 
