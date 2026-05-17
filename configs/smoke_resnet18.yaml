@@ -1,0 +1,44 @@
+seed: 42
+
+data:
+  metadata_csv: data/smoke/metadata.csv
+  teacher_cache: data/smoke/teacher_features.pt
+  image_size: 64
+  context_length: 77
+
+teacher:
+  model_name: ViT-B-32
+  pretrained: openai
+
+student:
+  image_encoder: resnet18
+  text_width: 64
+  text_layers: 1
+  text_heads: 4
+  embed_dim: 128
+  vocab_size: 49408
+  context_length: 77
+
+train:
+  epochs: 1
+  batch_size: 2
+  num_workers: 0
+  lr: 1.0e-4
+  weight_decay: 0.01
+  warmup_epochs: 0
+  grad_accum_steps: 1
+  amp: false
+  val_ratio: 0.25
+  drop_last: false
+
+loss:
+  lambda_img: 1.0
+  lambda_txt: 1.0
+  lambda_sim: 2.0
+  lambda_clip: 1.0
+  kd_temperature: 2.0
+
+output:
+  ckpt_dir: outputs/smoke/checkpoints
+  log_dir: outputs/smoke/logs
+

@@ -1,0 +1,17 @@
+torch
+torchvision
+torchaudio
+open_clip_torch
+timm
+transformers
+pillow
+pandas
+numpy
+tqdm
+scikit-learn
+matplotlib
+pyyaml
+psutil
+onnx
+onnxscript
+onnxruntime

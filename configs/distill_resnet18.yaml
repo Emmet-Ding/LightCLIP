@@ -1,0 +1,44 @@
+seed: 42
+
+data:
+  metadata_csv: data/metadata.csv
+  teacher_cache: data/teacher_cache/teacher_features.pt
+  image_size: 224
+  context_length: 77
+
+teacher:
+  model_name: ViT-B-32
+  pretrained: openai
+
+student:
+  image_encoder: resnet18
+  text_width: 256
+  text_layers: 2
+  text_heads: 4
+  embed_dim: 512
+  vocab_size: 49408
+  context_length: 77
+
+train:
+  epochs: 30
+  batch_size: 64
+  num_workers: 4
+  lr: 1.0e-4
+  weight_decay: 0.05
+  warmup_epochs: 2
+  grad_accum_steps: 1
+  amp: true
+  val_ratio: 0.1
+  drop_last: true
+
+loss:
+  lambda_img: 1.0
+  lambda_txt: 1.0
+  lambda_sim: 2.0
+  lambda_clip: 1.0
+  kd_temperature: 2.0
+
+output:
+  ckpt_dir: outputs/checkpoints
+  log_dir: outputs/logs
+
