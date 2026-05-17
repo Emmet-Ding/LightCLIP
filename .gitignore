@@ -21,6 +21,8 @@ outputs/*
 *.pt
 *.pth
 *.ckpt
+!weights/
+!weights/*.pt
 
 # Local/editor files
 .idea/
