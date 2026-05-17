@@ -30,16 +30,24 @@ def main():
     parser.add_argument("--metadata_csv", type=str, default="data/metadata.csv")
     parser.add_argument("--model_name", type=str, default="ViT-B-32")
     parser.add_argument("--pretrained", type=str, default="openai")
+    parser.add_argument("--weights_path", type=str, default=None)
     parser.add_argument("--prompt", type=str, default="a photo of a {}")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--num_workers", type=int, default=4)
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    pretrained = args.weights_path if args.weights_path else args.pretrained
+    model_kwargs = (
+        {"force_quick_gelu": True, "weights_only": False}
+        if args.weights_path
+        else {}
+    )
     model, _, preprocess = open_clip.create_model_and_transforms(
         args.model_name,
-        pretrained=args.pretrained,
+        pretrained=pretrained,
         device=device,
+        **model_kwargs,
     )
     tokenizer = open_clip.get_tokenizer(args.model_name)
     model.eval()
@@ -83,4 +91,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

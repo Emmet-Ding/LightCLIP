@@ -24,6 +24,20 @@ pip install -r requirements.txt
 
 For CUDA-specific PyTorch wheels, install PyTorch first from the matching PyTorch index, then run `pip install -r requirements.txt`.
 
+The OpenCLIP ViT-B/32 OpenAI checkpoint is tracked with Git LFS at:
+
+```text
+weights/openclip_vit_b_32_openai.pt
+```
+
+After cloning on a server, run:
+
+```bash
+git lfs pull
+```
+
+The local OpenAI `.pt` checkpoint is a trusted TorchScript archive downloaded from OpenAI's public checkpoint URL. The teacher scripts pass `weights_only=False` only when `--weights_path` is used, because PyTorch 2.6+ otherwise refuses to load TorchScript archives through `torch.load`.
+
 ## Data Format
 
 Use an ImageFolder layout:
@@ -58,7 +72,7 @@ python tools/precompute_teacher_features.py \
   --metadata_csv data/metadata.csv \
   --out data/teacher_cache/teacher_features.pt \
   --model_name ViT-B-32 \
-  --pretrained openai \
+  --weights_path weights/openclip_vit_b_32_openai.pt \
   --batch_size 64
 ```
 
@@ -83,7 +97,7 @@ Evaluate the teacher baseline:
 python tools/eval_teacher_zeroshot.py \
   --metadata_csv data/metadata.csv \
   --model_name ViT-B-32 \
-  --pretrained openai \
+  --weights_path weights/openclip_vit_b_32_openai.pt \
   --prompt "a photo of a {}"
 ```
 
@@ -122,4 +136,3 @@ The smoke test validates code wiring only. It is not an accuracy experiment beca
 - Keep `data/images`, `data/metadata.csv`, `data/teacher_cache/*.pt`, and `outputs/` outside git.
 - For small GPUs, set `train.batch_size: 16` and `train.grad_accum_steps: 4`.
 - For medical image experiments, start with domain-specific prompts and treat OpenCLIP ViT-B/32 as a general-domain teacher unless a medical CLIP teacher is substituted.
-

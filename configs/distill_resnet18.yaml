@@ -9,6 +9,7 @@ data:
 teacher:
   model_name: ViT-B-32
   pretrained: openai
+  weights_path: weights/openclip_vit_b_32_openai.pt
 
 student:
   image_encoder: resnet18
@@ -41,4 +42,3 @@ loss:
 output:
   ckpt_dir: outputs/checkpoints
   log_dir: outputs/logs
-

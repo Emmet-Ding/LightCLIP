@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--out", type=str, default="data/teacher_cache/teacher_features.pt")
     parser.add_argument("--model_name", type=str, default="ViT-B-32")
     parser.add_argument("--pretrained", type=str, default="openai")
+    parser.add_argument("--weights_path", type=str, default=None)
     parser.add_argument("--batch_size", type=int, default=64)
     args = parser.parse_args()
 
@@ -27,10 +28,17 @@ def main():
     image_paths = df["image_path"].astype(str).tolist()
     texts = df["text"].astype(str).tolist()
 
+    pretrained = args.weights_path if args.weights_path else args.pretrained
+    model_kwargs = (
+        {"force_quick_gelu": True, "weights_only": False}
+        if args.weights_path
+        else {}
+    )
     model, _, preprocess = open_clip.create_model_and_transforms(
         args.model_name,
-        pretrained=args.pretrained,
+        pretrained=pretrained,
         device=device,
+        **model_kwargs,
     )
     tokenizer = open_clip.get_tokenizer(args.model_name)
     model.eval()
@@ -70,7 +78,7 @@ def main():
             "image_paths": image_paths,
             "texts": texts,
             "model_name": args.model_name,
-            "pretrained": args.pretrained,
+            "pretrained": pretrained,
         },
         out,
     )
@@ -83,4 +91,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
