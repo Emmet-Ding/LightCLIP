@@ -11,7 +11,7 @@ env/
 # Data and generated artifacts
 data/images/*
 !data/images/.gitkeep
-data/metadata.csv
+!data/metadata.csv
 data/smoke/
 data/teacher_cache/*
 !data/teacher_cache/.gitkeep

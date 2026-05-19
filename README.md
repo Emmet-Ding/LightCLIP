@@ -121,9 +121,45 @@ data/images/
   truck/
 ```
 
-数据目录 `data/` 已被 `.gitignore` 排除，不会上传到 GitHub。服务器实验时需要自行把数据放到相同位置，或在配置中改路径。
+仓库通过 Git LFS 提供了一个数据集归档：
+
+```text
+data/lightclip_dataset.tar.gz
+```
+
+归档内容包含：
+
+```text
+images/
+metadata.csv
+```
+
+如果使用仓库随附数据集，clone 后先执行：
+
+```bash
+git lfs pull
+tar -xzf data/lightclip_dataset.tar.gz -C data
+```
+
+Windows PowerShell 可以使用：
+
+```powershell
+git lfs pull
+tar -xzf data\lightclip_dataset.tar.gz -C data
+```
+
+解压后应得到：
+
+```text
+data/images/
+data/metadata.csv
+```
+
+当前 GitHub 只跟踪 `data/lightclip_dataset.tar.gz` 和 `data/metadata.csv`。解压后的 `data/images/`、Teacher cache 和训练输出仍被 `.gitignore` 排除，避免把大量派生文件直接写进普通 Git 历史。
 
 ## 3. 生成 metadata.csv
+
+如果使用仓库随附的 `data/lightclip_dataset.tar.gz`，解压后已经包含 `data/metadata.csv`，可以直接跳到第 4 步。
 
 从 `data/images/` 生成训练用 CSV：
 
@@ -458,15 +494,11 @@ git clone https://github.com/Emmet-Ding/LightCLIP.git
 cd LightCLIP
 git lfs install
 git lfs pull
+tar -xzf data/lightclip_dataset.tar.gz -C data
 
 conda create -n lightclip_distill python=3.10 -y
 conda activate lightclip_distill
 pip install -r requirements.txt
-
-python tools/build_metadata_from_imagefolder.py \
-  --image_root data/images \
-  --out_csv data/metadata.csv \
-  --prompt "a photo of a {}"
 
 python tools/precompute_teacher_features.py \
   --metadata_csv data/metadata.csv \
@@ -541,4 +573,3 @@ ONNX 导出是否成功
 ```
 
 医学图像场景下，OpenCLIP ViT-B/32 仍然是通用自然图像 Teacher。若用于甲状腺超声等任务，应谨慎解释 zero-shot 结果，并优先设计领域 prompt 或替换医学 CLIP Teacher。
-
